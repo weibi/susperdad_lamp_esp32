@@ -12,6 +12,11 @@
 #include "driver/i2s.h"
 #include "common_component.h"
 
+#define PCM5102_MUTE                21
+#define PCM5102_MUTE_ON             0
+#define PCM5102_MUTE_OFF            1
+
+
 typedef enum {
     I2S, I2S_MERUS, DAC_BUILT_IN, PDM
 } output_mode_t;

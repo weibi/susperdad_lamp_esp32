@@ -79,7 +79,10 @@ static void init_i2s(renderer_config_t *config)
             .data_out_num = GPIO_NUM_22,
             .data_in_num = I2S_PIN_NO_CHANGE
     };
-
+	// mute off
+    gpio_pad_select_gpio(PCM5102_MUTE);
+    gpio_set_direction(PCM5102_MUTE, GPIO_MODE_OUTPUT);
+    gpio_set_level(PCM5102_MUTE, PCM5102_MUTE_OFF);
     i2s_driver_install(config->i2s_num, &i2s_config, 1, &i2s_event_queue);
 
     if((mode & I2S_MODE_DAC_BUILT_IN) || (mode & I2S_MODE_PDM))
