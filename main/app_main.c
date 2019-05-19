@@ -6,6 +6,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
+#include "esp_freertos_hooks.h"
 #include "esp_system.h"
 #include "esp_wifi.h"
 #include "esp_event_loop.h"
@@ -13,6 +14,10 @@
 #include "nvs_flash.h"
 #include "http.h"
 #include "driver/i2s.h"
+
+#include "lvgl.h"
+#include "st7789v_drv.h"
+#include "demo.h"
 
 #include "vector.h"
 #include "ui.h"
@@ -46,7 +51,6 @@ static void init_hardware()
     nvs_flash_init();
 
     // init UI
-    // ui_init(GPIO_NUM_32);
 
     //Initialize the SPI RAM chip communications and see if it actually retains some bytes. If it
     //doesn't, warn user.
@@ -57,6 +61,56 @@ static void init_hardware()
 
     ESP_LOGI(TAG, "hardware initialized");
 }
+
+
+static void IRAM_ATTR lv_tick_task(void)
+{
+	lv_tick_inc(portTICK_RATE_MS);
+}
+
+static void display_task(void *pvParameters)
+{
+
+	while(1) {
+		vTaskDelay(100);
+		lv_task_handler();
+	}
+
+    vTaskDelete(NULL);
+}
+#define RED  	0xf800
+#define GREEN	0x07e0
+#define BLUE 	0x001f
+#define WHITE	0xffff
+#define BLACK	0x0000
+#define YELLOW  0xFFE0
+#define GRAY0   0xEF7D   	//��ɫ0 3165 00110 001011 00101
+#define GRAY1   0x8410      	//��ɫ1      00000 000000 00000
+#define GRAY2   0x4208      	//��ɫ2  1111111111011111
+
+
+
+
+static void start_display()
+{
+    ESP_LOGI(TAG, "starting display");
+
+	lv_init();
+    st7789v_init();
+
+	lv_disp_drv_t disp;
+	lv_disp_drv_init(&disp);
+	disp.disp_flush = st7789v_flush;
+    disp.disp_fill = st7789v_fill;
+	lv_disp_drv_register(&disp);
+
+    esp_register_freertos_tick_hook(lv_tick_task);
+    // start reader task
+    demo_create();
+    xTaskCreatePinnedToCore(&display_task, "display_task", 2560, NULL, 20,
+    NULL, 0);
+}
+
 
 static void start_wifi()
 {
@@ -134,10 +188,11 @@ void app_main()
 #ifdef CONFIG_BT_SPEAKER_MODE
     bt_speaker_start(create_renderer_config());
 #else
+    start_display();
     start_wifi();
     start_web_radio();
 #endif
 
     ESP_LOGI(TAG, "RAM left %d", esp_get_free_heap_size());
-    // ESP_LOGI(TAG, "app_main stack: %d\n", uxTaskGetStackHighWaterMark(NULL));
+    ESP_LOGI(TAG, "app_main stack: %d\n", uxTaskGetStackHighWaterMark(NULL));
 }
